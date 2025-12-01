@@ -1,7 +1,6 @@
 # (iot-repo-3) 스마트 홈 IoT 통합 프로젝트
 
-IoT 프로젝트 3조 저장소. 현관 RFID 인식부터 엘리베이터 호출, 집 안 조명·커튼·에어컨 제어까지  
-하나의 흐름으로 자동화하는 스마트 홈 IoT 팀 프로젝트입니다.
+현관 RFID 인식부터 엘리베이터 호출, 집 안 조명·커튼·에어컨 제어까지 하나의 흐름으로 자동화하는 스마트 홈 IoT 팀 프로젝트입니다.
 
 ## 전체 시나리오
 
@@ -62,9 +61,3 @@ IoT 프로젝트 3조 저장소. 현관 RFID 인식부터 엘리베이터 호출
 
 각 디바이스별 상세 README는 해당 디렉터리를 참고합니다.  
 예) 스마트 커튼: `devices/curtain/docs/README.md`
-
-1. 저장소 클론
-
-   ```bash
-   git clone https://github.com/addinedu-ros-11th/iot-repo-3
-   cd iot-repo-3
