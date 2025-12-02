@@ -1,6 +1,7 @@
 #include "entrance.h"
+#include <EEPROM.h>
 
-bool getIsValid()
+bool Entrance::getIsValid()
 {
 	return is_valid;
 }
@@ -22,6 +23,7 @@ void Entrance::setup()
 	pinMode(ECHO, INPUT);
 	stepper.setSpeed(10);
 	Serial.println(F("Entrance System Setup Done"));
+	set_device_id();
 }
 
 
@@ -46,11 +48,13 @@ void Entrance::loop()
 		{
 			is_valid = true;
 			Serial.println("[DEBUG] Card is valid!");
+			createLog(EVENT_TYPE::VALID);
 		} 
 		else 
 		{
 			is_valid = false;
 			Serial.println("[DEBUG] Card is NOT valid");
+			createLog(EVENT_TYPE::FAILED);
 		}
 
 		rc522.PICC_HaltA();
@@ -60,8 +64,10 @@ void Entrance::loop()
 		{
 			stepper.step(MOTOR_STEPS);
 			open_time = millis();
+
 			Serial.print("[DEBUG] Door opened at: ");
 			Serial.println(open_time);
+			createLog(EVENT_TYPE::OPENED);
 		}
 	}
 	// ✅ 상태 2: 문이 열려있는 중 (거리 감지)
@@ -218,4 +224,48 @@ MFRC522::StatusCode Entrance::writeInteger(int index, MFRC522::MIFARE_Key key, i
 	}
 
 	return status;
+}
+
+
+const char* Entrance::eventTypeToString(EVENT_TYPE type)
+{
+	switch (type)
+	{
+	case EVENT_TYPE::OPENED:
+		return "OPENED";
+
+	case EVENT_TYPE::VALID:
+		return "VALID";
+
+	case EVENT_TYPE::FAILED:
+		return "FAILED";
+
+	default:
+		return "UNKNOWN";
+	}
+}
+
+void Entrance::createLog(EVENT_TYPE type)
+{	
+	Serial.print(eventTypeToString(type));
+	Serial.print(",");
+	Serial.println(entrance_device_id);
+}
+
+void Entrance::set_device_id()
+{
+	uint32_t chipId = 0;
+	for (int i = 0; i < 4; i++) {
+		chipId |= ((EEPROM.read(i) & 0xFF) << (8 * i));
+	}
+	
+	// 칩 ID가 없으면 생성
+	if (chipId == 0 || chipId == 0xFFFFFFFF) {
+		chipId = millis() % 1000;
+		for (int i = 0; i < 4; i++) {
+			EEPROM.write(i, (chipId >> (8 * i)) & 0xFF);
+		}
+	}
+	
+	sprintf(entrance_device_id, "entrance_device_%03d", chipId % 1000);
 }
