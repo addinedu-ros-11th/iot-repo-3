@@ -32,6 +32,8 @@ private:
 	unsigned long m_open_time;
 	bool m_is_detected;
 	bool m_is_valid;
+	byte m_card_uid[10];
+	byte m_card_uid_size;
 
 	MFRC522::StatusCode checkAuth(int index, MFRC522::MIFARE_Key key);
 	void toBytes(byte* buffer, int data, int offset = 0);

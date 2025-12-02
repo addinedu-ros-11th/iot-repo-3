@@ -100,6 +100,12 @@ void Entrance::waitForCard()
 		if (rc522.PICC_IsNewCardPresent() && rc522.PICC_ReadCardSerial()) 
 		{
 			Serial.println("[DEBUG] {waitForCard} Card detected!");
+			m_card_uid_size = rc522.uid.size;
+			for (byte i = 0; i < m_card_uid_size; i++) 
+			{
+				m_card_uid[i] = rc522.uid.uidByte[i];
+			}
+
 			Serial.print("Card UID: ");
 			for (byte i = 0; i < rc522.uid.size; i++) 
 			{
@@ -119,6 +125,12 @@ void Entrance::closeDoor()
 	m_is_detected = false;
 	m_is_valid = false;
 	stepper.step(-MOTOR_STEPS);
+
+	digitalWrite(STEP_INT4, LOW);
+	digitalWrite(STEP_INT2, LOW);
+	digitalWrite(STEP_INT3, LOW);
+	digitalWrite(STEP_INT1, LOW);
+
 	Serial.println("[DEBUG] Door closed");
 }
 
@@ -249,7 +261,16 @@ void Entrance::createLog(EVENT_TYPE type)
 {	
 	Serial.print(eventTypeToString(type));
 	Serial.print(",");
-	Serial.println(m_entrance_device_id);
+	Serial.print(m_entrance_device_id);
+	Serial.print(",");
+	
+	// UID 출력 (HEX 형식)
+	for (byte i = 0; i < m_card_uid_size; i++) 
+	{
+		if (m_card_uid[i] < 0x10) Serial.print("0");
+		Serial.print(m_card_uid[i], HEX);
+	}
+	Serial.println();
 }
 
 void Entrance::set_device_id()
