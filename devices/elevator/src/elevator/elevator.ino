@@ -218,8 +218,10 @@ void arriveAtDstUpdateMode()
       Serial.print("This is floor "); Serial.println(ele_cur_floor+1);
       Serial.println("Door is Opend");
       wait_time = millis() + 5000; 
-      Serial.print("ACK,floor,0");
-      Serial.println(ele_cur_floor+1);
+      Serial.print("SEN,floor,");
+      Serial.println(ele_cur_floor + 1);
+      Serial.print("ACK,floor,");
+      Serial.println(ele_cur_floor + 1);
     }
     
     seven_seg_data_to_display = seven_seg_digits[ele_cur_floor];
