@@ -22,9 +22,7 @@ public:
       motorDirection(0),
       lastTelemetryTime(0),
       motorSpeedRpm(motorRpm),
-      controlMode(MODE_AUTO),
-      targetStep(0),
-      targetActive(false),
+        controlMode(MODE_AUTO),
       commandIndex(0) {
   }
 
@@ -42,7 +40,7 @@ public:
       int lightValue = analogRead(ldrPin);
       lastTelemetryTime = now;
       emitTelemetry(lightValue);
-      if (controlMode == MODE_AUTO && !targetActive) {
+      if (controlMode == MODE_AUTO) {
         applyAutoLogic(lightValue);
       }
     }
@@ -59,14 +57,10 @@ public:
 
     if ((motorDirection == 1 && currentStep >= curtainMaxSteps) ||
         (motorDirection == -1 && currentStep <= 0)) {
-      if (targetActive) {
-        targetActive = false;
-        sendError("LIMIT");
-      }
+      sendError("LIMIT");
       motorDirection = 0;
     }
 
-    updateTargetTracking();
     delay(5);
   }
 
@@ -141,7 +135,6 @@ private:
 
   void handleMotorCommand(const String& valueUpper) {
     controlMode = MODE_MANUAL;
-    targetActive = false;
 
     if (valueUpper == "OPEN") {
       if (setMotorDirection(1)) {
@@ -162,11 +155,9 @@ private:
   void handleModeCommand(const String& valueUpper) {
     if (valueUpper == "AUTO") {
       controlMode = MODE_AUTO;
-      targetActive = false;
       setMotorDirection(0);
     } else if (valueUpper == "MANUAL") {
       controlMode = MODE_MANUAL;
-      targetActive = false;
       setMotorDirection(0);
     } else {
       sendError("UNKNOWN");
@@ -242,9 +233,6 @@ private:
   int motorSpeedRpm;
 
   ControlMode controlMode;
-  long targetStep;
-  bool targetActive;
-  static constexpr int targetTolerance = 10;
 
   char commandBuffer[64];
   size_t commandIndex;
