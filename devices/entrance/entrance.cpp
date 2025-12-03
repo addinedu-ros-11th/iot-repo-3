@@ -94,7 +94,7 @@ void Entrance::loop()
 				{
 					offset += sprintf(uidBuffer + offset, "%02X", m_card_uid[i]);
 				}
-				createLog("SEN", "RFID_VALID", String(uidBuffer));
+				createLog("SEN", "RFID_ACCESS", String(uidBuffer));
 			} 
 			else 
 			{
