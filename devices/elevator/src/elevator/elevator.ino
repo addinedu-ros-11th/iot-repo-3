@@ -38,6 +38,17 @@ int ele_dst[] = {0, 0};
 int ele_pos = 0;
 byte seven_seg_data_to_display;
 
+void sendElevatorModeToPC(ElevatorMode mode) {
+  Serial.print("SEN,ele_dir,");
+  if (mode == ElevatorMode::WAIT) {
+    Serial.println("0");
+  } else if (mode == ElevatorMode::UP) {
+    Serial.println("1");
+  } else if (mode == ElevatorMode::DOWN) {
+    Serial.println("2");
+  }
+}
+
 // 7-segment display data for numbers 1, 2, 3 (common anode, DP gfedcba)
 const byte seven_seg_digits[] = {
   B11111001, // 1 (0층)
@@ -128,9 +139,15 @@ void assignEleDst()
           ele_dst[0] = min_req;
           ele_dst[1] = max_req;
           if (ele_pos > fromFloorToElepos(min_req))
+          {
             ele_mode = ElevatorMode::DOWN;
+            sendElevatorModeToPC(ElevatorMode::DOWN);
+          }
           else if (ele_pos < fromFloorToElepos(min_req))
+          {
             ele_mode = ElevatorMode::UP;
+            sendElevatorModeToPC(ElevatorMode::UP);
+          }
           else
             Serial.println("The elevator is already on the floor!");
       }
@@ -223,11 +240,13 @@ void arriveAtDstUpdateMode()
           {
             ele_mode = ElevatorMode::WAIT;
             Serial.println("Switch Mode : UP -> WAIT");
+            sendElevatorModeToPC(ElevatorMode::WAIT);
           }
           else
           {
             ele_mode = ElevatorMode::DOWN;
             Serial.println("Switch Mode : UP -> DOWN");
+            sendElevatorModeToPC(ElevatorMode::DOWN);
           }
         }
         break;
@@ -239,11 +258,13 @@ void arriveAtDstUpdateMode()
           {
             ele_mode = ElevatorMode::WAIT;
             Serial.println("Switch Mode : DOWN -> WAIT");
+            sendElevatorModeToPC(ElevatorMode::WAIT);
           }
           else
           {
             ele_mode = ElevatorMode::UP;
             Serial.println("Switch Mode : DOWN -> UP");
+            sendElevatorModeToPC(ElevatorMode::UP);
           }
         }
         break;
