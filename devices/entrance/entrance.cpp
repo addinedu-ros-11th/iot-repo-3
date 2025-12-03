@@ -26,48 +26,103 @@ void Entrance::setup()
 	set_device_id();
 }
 
-
 void Entrance::loop() 
 {
+	while (Serial.available() > 0) 
+	{
+		char incomingChar = Serial.read();
+		
+		if (incomingChar == '\n') 
+		{
+			if (m_serial_buffer.length() > 0) 
+			{
+				Serial.print("[DEBUG] Received: ");
+				Serial.println(m_serial_buffer);
+				parseSerialCommand(m_serial_buffer);
+				m_serial_buffer = "";
+			}
+		}
+		else if (incomingChar == '\r') 
+		{
+			// 무시
+		}
+		else if (m_serial_buffer.length() < BUFFER_SIZE) 
+		{
+			m_serial_buffer += incomingChar;
+		}
+	}
+
 	// ✅ 상태 1: 카드 대기 중
 	if (m_open_time == 0)
 	{
-		waitForCard();
-		
-		int index = 61;
-		MFRC522::MIFARE_Key key;
-		
-		for (int i = 0; i < 6; i++) 
+		if (rc522.PICC_IsNewCardPresent() && rc522.PICC_ReadCardSerial()) 
 		{
-			key.keyByte[i] = 0xFF;
+			Serial.println("[DEBUG] Card detected!");
+			m_card_uid_size = rc522.uid.size;
+			for (byte i = 0; i < m_card_uid_size; i++) 
+			{
+				m_card_uid[i] = rc522.uid.uidByte[i];
+			}
+
+			Serial.print("Card UID: ");
+			for (byte i = 0; i < rc522.uid.size; i++) 
+			{
+				Serial.print(rc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+				Serial.print(rc522.uid.uidByte[i], HEX);
+			}
+			Serial.println();
+
+			int index = 61;
+
+			MFRC522::MIFARE_Key key;
+			
+			for (int i = 0; i < 6; i++) 
+			{
+				key.keyByte[i] = 0xFF;
+			}
+			int i_data = 32767;
+			
+			// RFID 자동 제어
+			if (readInteger(index, key, i_data) == MFRC522::STATUS_OK) 
+			{
+				m_is_valid = true;
+				Serial.println("[DEBUG] Card is valid!");
+
+				char uidBuffer[20] = {0};
+				int offset = 0;
+				for (byte i = 0; i < m_card_uid_size; i++) 
+				{
+					offset += sprintf(uidBuffer + offset, "%02X", m_card_uid[i]);
+				}
+				createLog("SEN", String(uidBuffer), 1);
+			} 
+			else 
+			{
+				m_is_valid = false;
+				Serial.println("[DEBUG] Card is NOT valid");
+				char uidBuffer[20] = {0};
+				int offset = 0;
+				for (byte i = 0; i < m_card_uid_size; i++) 
+				{
+					offset += sprintf(uidBuffer + offset, "%02X", m_card_uid[i]);
+				}
+				createLog("SEN", String(uidBuffer), 0);
+			}
+
+			rc522.PICC_HaltA();
+			rc522.PCD_StopCrypto1();
 		}
-		int i_data = 32767;
-		m_is_valid = false;
-
-		if (readInteger(index, key, i_data) == MFRC522::STATUS_OK) 
-		{
-			m_is_valid = true;
-			Serial.println("[DEBUG] Card is valid!");
-			createLog(EVENT_TYPE::VALID);
-		} 
-		else 
-		{
-			m_is_valid = false;
-			Serial.println("[DEBUG] Card is NOT valid");
-			createLog(EVENT_TYPE::FAILED);
-		}
-
-		rc522.PICC_HaltA();
-		rc522.PCD_StopCrypto1();
-
+		
 		if (m_is_valid) 
-		{
+		{ 
 			stepper.step(MOTOR_STEPS);
 			m_open_time = millis();
 
 			Serial.print("[DEBUG] Door opened at: ");
 			Serial.println(m_open_time);
-			createLog(EVENT_TYPE::OPENED);
+			createLog("SEN", "MOTOR", 1);
+			createLog("CMD", "ELE", 1);
+			m_is_valid = false;\
 		}
 	}
 	// ✅ 상태 2: 문이 열려있는 중 (거리 감지)
@@ -80,6 +135,7 @@ void Entrance::loop()
 			m_is_detected = true;
 			m_open_time = millis();
 			Serial.println("[DEBUG] Object detected, door stays open");
+			createLog("SEN", "DISTANCE", (float)dist);
 		} 
 		else 
 		{
@@ -131,7 +187,7 @@ void Entrance::closeDoor()
 	digitalWrite(STEP_INT3, LOW);
 	digitalWrite(STEP_INT1, LOW);
 
-	Serial.println("[DEBUG] Door closed");
+	createLog("SEN", "MOTOR", -1);
 }
 
 MFRC522::StatusCode Entrance::checkAuth(int index, MFRC522::MIFARE_Key key) 
@@ -173,11 +229,6 @@ long Entrance::detectDistance()
 	duration = pulseIn(ECHO, HIGH, timeout);
 	
 	distance = duration * 0.034 / 2;
-
-	if (distance == 0) 
-	{	
-		Serial.println("[DEBUG] distance is 0");
-	}
 
 	return distance;
 }
@@ -257,20 +308,17 @@ const char* Entrance::eventTypeToString(EVENT_TYPE type)
 	}
 }
 
-void Entrance::createLog(EVENT_TYPE type)
+void Entrance::createLog(String dataType, String metricName, float value)
 {	
-	Serial.print(eventTypeToString(type));
-	Serial.print(",");
 	Serial.print(m_entrance_device_id);
-	Serial.print(",");
+	Serial.print(DELIMITER);
+
+	Serial.print(dataType);
+	Serial.print(DELIMITER);
 	
-	// UID 출력 (HEX 형식)
-	for (byte i = 0; i < m_card_uid_size; i++) 
-	{
-		if (m_card_uid[i] < 0x10) Serial.print("0");
-		Serial.print(m_card_uid[i], HEX);
-	}
-	Serial.println();
+	Serial.print(metricName);
+	Serial.print(DELIMITER);
+	Serial.println(value);
 }
 
 void Entrance::set_device_id()
@@ -289,4 +337,61 @@ void Entrance::set_device_id()
 	}
 	
 	sprintf(m_entrance_device_id, "entrance_device_%03d", chipId % 1000);
+}
+
+void Entrance::parseSerialCommand(String command)
+{
+	int firstDelimiter = command.indexOf(DELIMITER);
+	if (firstDelimiter == -1) 
+	{
+		Serial.println("[ERROR] Invalid command format");
+		return;
+	}
+
+	String dataType = command.substring(0, firstDelimiter);
+	
+	int secondDelimiter = command.indexOf(DELIMITER, firstDelimiter + 1);
+	if (secondDelimiter == -1) 
+	{
+		Serial.println("[ERROR] Invalid command format");
+		return;
+	}
+
+	String metricName = command.substring(firstDelimiter + 1, secondDelimiter);
+	String value = command.substring(secondDelimiter + 1);
+
+	if (dataType == "CMO") 
+	{
+		if (metricName == "MOTOR") 
+		{
+			int action = value.toInt();
+			handleMotorCommand(action);
+		}
+		else 
+		{
+			Serial.println("[ERROR] Unknown metric name");
+		}
+	}
+	else 
+	{
+		Serial.print("[ERROR] Unknown data type: ");
+		Serial.println(dataType);
+	}
+}
+
+void Entrance::handleMotorCommand(int action)
+{
+	if (action == 1) 
+	{
+		m_is_valid = true;
+
+		Serial.print("ACK,");
+		Serial.print(m_entrance_device_id);
+		Serial.println(",1");
+	}
+	else 
+	{
+		Serial.print("[ERROR] Invalid action value: ");
+		Serial.println(action);
+	}
 }
