@@ -90,6 +90,12 @@ def entrance_log_main():
         "(event_type, device_id, card_uid) "
         "VALUES (%s, %s, %s)"
     )
+    
+    insert_sql = (
+        "INSERT INTO log "
+        "(log_id, timestamp, device_id, data_type, metric_name, value) " \
+        "VALUES (%s, %s, %s, %s, %s, %s)"
+    )
 
     try:
         with conn.cursor() as cur:
