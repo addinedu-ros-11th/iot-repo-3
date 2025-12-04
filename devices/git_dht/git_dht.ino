@@ -76,7 +76,7 @@ void handleHumidityAndTemperatureAIRHUM()
       }
       else if (tempDeg <= 20)
       {
-        analogWrite(R_LED, HIGH);
+        analogWrite(R_LED, 255);
       }
     }
     previousMillis = currentMillis;
@@ -147,7 +147,7 @@ void handleHumidityAndTemperatureAIR()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
         }
       }
       else
@@ -163,7 +163,7 @@ void handleHumidityAndTemperatureAIR()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
         }
       }
     }
@@ -256,7 +256,7 @@ void handleHumidityAndTemperatureHUM()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
           motorRunning = false;
         }
       }
@@ -274,7 +274,7 @@ void handleHumidityAndTemperatureHUM()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
           motorRunning = false;
         }
       }
@@ -315,7 +315,7 @@ void handleHumidityAndTemperature()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
           motorRunning = false;
         }
       }
@@ -334,7 +334,7 @@ void handleHumidityAndTemperature()
         }
         else if (tempDeg <= 20)
         {
-          analogWrite(R_LED, HIGH);
+          analogWrite(R_LED, 255);
           motorRunning = false;
         }
       }
@@ -407,7 +407,7 @@ void loop()
       Serial.println(",1");
       HeatOnControl = true;
       HeatStop = false;
-      analogWrite(R_LED, HIGH);
+      analogWrite(R_LED, 255);
     }
     else if (received == 'D')
     {
