@@ -147,7 +147,8 @@ private:
     void printSensorData(int temp, int hum) {
       Serial.print("SEN");
       Serial.print(",TEM,");
-      Serial.print(temp);
+      Serial.println(temp);
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum);
     }
