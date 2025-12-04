@@ -35,7 +35,7 @@ class GraphCanvas(FigureCanvas):
         self.ax2.clear()
         
         self.ax1.tick_params(axis='y', labelcolor='red')
-        self.ax1.set_ylim(0, 35)
+        self.ax1.set_ylim(15, 35)
         self.ax1.grid(True, alpha=0.3)
         
         self.ax2.tick_params(axis='y', labelcolor='blue')
@@ -83,31 +83,35 @@ class DisplayManager:
         self.lcd_temp = lcd_temp
         self.lcd_hum = lcd_hum
         self.graph_canvas = graph_canvas
+        self.latest_temp = None
+        self.latest_hum = None
     
     def update_display(self, data):
         """시리얼 데이터를 파싱하여 LCD와 그래프 업데이트"""
         try:
-            if "SEN,TEM" in data and "HUM" in data:
+            print("[DEBUG] update_display: " + data)
+            if data.startswith("SEN"):
                 parts = data.split(',')
-                temperature = float(parts[2])
-                humidity = int(parts[4])
-                
-                # LCD 업데이트
-                self.lcd_temp.display(temperature)
-                self.lcd_hum.display(humidity)
-                
-                # 그래프 업데이트
-                self.graph_canvas.update_graph(temperature, humidity)
+                if len(parts) >= 3:
+                    if parts[1] == "TEM":
+                        self.latest_temp = int(parts[2])
+                        self.lcd_temp.display(self.latest_temp)
+                    elif parts[1] == "HUM":
+                        self.latest_hum = int(parts[2])
+                        self.lcd_hum.display(self.latest_hum)
+
+                # 그래프는 temp와 hum 둘 다 있으면 업데이트
+                if self.latest_temp is not None and self.latest_hum is not None:
+                    self.graph_canvas.update_graph(self.latest_temp, self.latest_hum)
         except Exception as e:
             print(f"[ERROR] update_display: {e}")
-
 
 class Ui_Dialog(object):
     """대시보드 UI 클래스"""
 
     def __init__(self):
         self.api_url = "http://localhost:5000"
-        self.polling_interval = 1  # 1초마다 상태 조회
+        self.polling_interval = 0.1
         self.polling_thread = None
         self.running = True
         
@@ -660,11 +664,16 @@ class Ui_Dialog(object):
         metric_name = state.get('metric_name', '')
         value = state.get('value', '')
 
-        if metric_name == 'FLOOR':
-            print("[DEBUG] value: " + value)
-
         # 그래프와 LCD 업데이트용 데이터 생성
         if data_type == "SEN":
+            #print("[DEBUG] metric_name: " + metric_name + "value: " + value)
+            if metric_name == 'HUM':
+                serial_data = f"SEN,{metric_name},{value}"
+                self.display_manager.update_display(serial_data)
+            elif metric_name == 'TEM':
+                serial_data = f"SEN,{metric_name},{value}"
+                self.display_manager.update_display(serial_data)
+
             if metric_name == 'RFID_ACCESS':
                 self.le_e_id.setText(str(value))
                 self.label_e_approv.setText("✅")
@@ -672,12 +681,10 @@ class Ui_Dialog(object):
                 self.le_e_id.setText(str(value))
                 self.label_e_approv.setText("❌")
             elif metric_name == 'FLOOR':
-                try:
-                    floor_num = int(value)
-                    self.lcdNumber_floor.display(floor_num)
-                    
-                except (ValueError, TypeError):
-                    print(f"[ERROR] 잘못된 층수: {value}")
+                floor_num = int(value)
+                self.lcdNumber_floor.display(floor_num)
+                self.label_ele_3f
+
             elif metric_name == 'MOTOR' and value == '-1':
                 self.le_e_id.clear()
                 self.label_e_approv.setText("")
