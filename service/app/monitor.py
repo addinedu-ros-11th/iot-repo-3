@@ -71,6 +71,14 @@ class SerialMonitor:
         if not parsed:
             return
         
+        if hasattr(self, 'system_state') and self.system_state:
+            self.system_state.update(
+                parsed.device_id,
+                parsed.data_type,
+                parsed.metric_name,
+                parsed.value
+        )
+        
         if parsed.data_type == 'CMD':
             self._handle_cmd(parsed)
         

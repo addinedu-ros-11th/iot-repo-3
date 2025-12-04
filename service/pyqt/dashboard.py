@@ -1,50 +1,26 @@
-import serial
+"""IoT 시스템 대시보드 UI"""
+
+import sys
 import threading
 import time
+import requests
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import pyqtSignal, QTimer
-
-
-class SerialThread(QtCore.QThread):
-    received_data = pyqtSignal(str)
-
-    def __init__(self, serial_port, baud_rate):
-        super().__init__()
-        self.serial_port = serial_port
-        self.baud_rate = baud_rate
-        self.ser = None
-        self.running = False
-
-    def run(self):
-        try:
-            self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
-            self.running = True
-            while self.running:
-                if self.ser.in_waiting > 0:
-                    data = self.ser.readline().decode('utf-8').strip()
-                    if data:
-                        self.received_data.emit(data)
-                time.sleep(0.01)  # Small delay to prevent busy-waiting
-        except serial.SerialException as e:
-            print(f"Serial Error: {e}")
-        finally:
-            if self.ser and self.ser.is_open:
-                self.ser.close()
-
-    def stop(self):
-        self.running = False
-        self.wait()
-
-    def write(self, data):
-        if self.ser and self.ser.is_open:
-            self.ser.write(data.encode('utf-8'))
 
 
 class Ui_Dialog(object):
-    def setupUi(self, Dialog):
-        Dialog.setObjectName("Dialog")
-        Dialog.resize(1039, 582)
-        self.groupBox_e = QtWidgets.QGroupBox(parent=Dialog)
+    """대시보드 UI 클래스"""
+
+    def __init__(self):
+        self.api_url = "http://localhost:5000"
+        self.polling_interval = 1  # 1초마다 상태 조회
+        self.polling_thread = None
+        self.running = True
+
+    def setupUi(self, dialog):
+        """UI 설정"""
+        dialog.setObjectName("Dialog")
+        dialog.resize(1039, 582)
+        self.groupBox_e = QtWidgets.QGroupBox(parent=dialog)
         self.groupBox_e.setGeometry(QtCore.QRect(70, 20, 341, 141))
         self.groupBox_e.setObjectName("groupBox_e")
         self.le_e_id = QtWidgets.QLineEdit(parent=self.groupBox_e)
@@ -60,7 +36,7 @@ class Ui_Dialog(object):
         self.pushButton_e = QtWidgets.QPushButton(parent=self.groupBox_e)
         self.pushButton_e.setGeometry(QtCore.QRect(180, 100, 151, 30))
         self.pushButton_e.setObjectName("pushButton_e")
-        self.groupBox_ele = QtWidgets.QGroupBox(parent=Dialog)
+        self.groupBox_ele = QtWidgets.QGroupBox(parent=dialog)
         self.groupBox_ele.setGeometry(QtCore.QRect(70, 190, 341, 291))
         self.groupBox_ele.setObjectName("groupBox_ele")
         self.lcdNumber_floor = QtWidgets.QLCDNumber(parent=self.groupBox_ele)
@@ -89,7 +65,7 @@ class Ui_Dialog(object):
         self.label_ele_1f = QtWidgets.QLabel(parent=self.groupBox_ele)
         self.label_ele_1f.setGeometry(QtCore.QRect(170, 190, 16, 18))
         self.label_ele_1f.setObjectName("label_ele_1f")
-        self.groupBox_home = QtWidgets.QGroupBox(parent=Dialog)
+        self.groupBox_home = QtWidgets.QGroupBox(parent=dialog)
         self.groupBox_home.setGeometry(QtCore.QRect(440, 20, 571, 491))
         self.groupBox_home.setObjectName("groupBox_home")
         self.widget_graph = QtWidgets.QWidget(parent=self.groupBox_home)
@@ -154,19 +130,13 @@ class Ui_Dialog(object):
         self.pushButton_humi.setGeometry(QtCore.QRect(380, 220, 151, 30))
         self.pushButton_humi.setObjectName("pushButton_humi")
 
-        self.retranslateUi(Dialog)
-        QtCore.QMetaObject.connectSlotsByName(Dialog)
+        self.retranslateUi(dialog)
+        QtCore.QMetaObject.connectSlotsByName(dialog)
 
-        # Initialize serial communication
-        self.serial_thread = SerialThread(serial_port='/dev/ttyACM0', baud_rate=9600)  # Adjust port and baud rate as needed
-        self.serial_thread.received_data.connect(self.handle_serial_data)
-        self.serial_thread.start()
-
-        # Connect buttons to slots
+        # 버튼 클릭 이벤트 연결
         self.pushButton_1f.clicked.connect(self.elevator_1f_call)
         self.pushButton_2f.clicked.connect(self.elevator_2f_call)
         self.pushButton_3f.clicked.connect(self.elevator_3f_call)
-        
         self.pushButton_e.clicked.connect(self.entrance_open)
 
         self.pushButton_curOpen.clicked.connect(self.curtain_open)
@@ -182,14 +152,28 @@ class Ui_Dialog(object):
         self.progressBar_cur.setRange(0, 100)
         self._refresh_curtain_controls()
 
-        # Initially hide all check icons
+        self.pushButton_curOpen.clicked.connect(self.curtain_open)
+        self.pushButton_curClose.clicked.connect(self.curtain_close)
+        self.pushButton_curStop.clicked.connect(self.curtain_stop)
+        self.pushButton_curAuto.clicked.connect(self.curtain_enable_auto)
+        self.progressBar_cur.setRange(0, 100)
+
+        self.curtain_max_steps = int(1.3 * 2048)
+        self.curtain_auto_mode = True
+        self.curtain_motion_state = "정지"
+        self.curtain_status_message = ""
+        self.progressBar_cur.setRange(0, 100)
+        self._refresh_curtain_controls()
+
+        # 초기 상태: 모든 체크 아이콘 숨김
         self.label_ele_1f.setText("")
         self.label_ele_2f.setText("")
         self.label_ele_3f.setText("")
 
-    def retranslateUi(self, Dialog):
+    def retranslateUi(self, dialog):
+        """UI 텍스트 설정"""
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        dialog.setWindowTitle(_translate("Dialog", "Dialog"))
         self.groupBox_e.setTitle(_translate("Dialog", "공동현관"))
         self.label_e_id.setText(_translate("Dialog", "ID"))
         self.label_e_approv.setText(_translate("Dialog", ""))
@@ -199,9 +183,6 @@ class Ui_Dialog(object):
         self.pushButton_1f.setText(_translate("Dialog", "1층"))
         self.pushButton_2f.setText(_translate("Dialog", "2층"))
         self.pushButton_3f.setText(_translate("Dialog", "3층"))
-        # self.label_ele_3f.setText(_translate("Dialog", "✅"))
-        # self.label_ele_2f.setText(_translate("Dialog", "✅"))
-        # self.label_ele_1f.setText(_translate("Dialog", "✅"))
         self.groupBox_home.setTitle(_translate("Dialog", "Home"))
         self.label_2.setText(_translate("Dialog", "온도(C)"))
         self.label_3.setText(_translate("Dialog", "습도(%)"))
@@ -220,67 +201,143 @@ class Ui_Dialog(object):
         self.pushButton_humi.setText(_translate("Dialog", "가습기 ON/OFF/Auto"))
 
     def entrance_open(self):
-        command = "CMO,MOTOR,1\n"
-        self.serial_thread.write(command)
-        self.label_e_approv.setText("✅")
+        """출입문 열기"""
+        try:
+            response = requests.post(
+                f"{self.api_url}/api/command",
+                json={
+                    'device_id': 'ent_001',
+                    'metric_name': 'MOTOR',
+                    'value': '1'
+                },
+                timeout=5
+            )
+
+            if response.json().get('success'):
+                self.label_e_approv.setText("✅")
+            else:
+                print(f"[ERROR] {response.json().get('error')}")
+
+        except requests.RequestException as e:
+            print(f"[ERROR] 명령 전송 실패: {e}")
 
     def elevator_1f_call(self):
-        command = "CMO,FLOOR,1\n"
-        self.serial_thread.write(command)
-        self.label_ele_1f.setText("✅")
+        """엘리베이터 1층 호출"""
+        try:
+            response = requests.post(
+                f"{self.api_url}/api/command",
+                json={
+                    'device_id': 'ele_001',
+                    'metric_name': 'FLOOR',
+                    'value': '1'
+                },
+                timeout=5
+            )
+
+            if response.json().get('success'):
+                self.label_ele_1f.setText("✅")
+            else:
+                print(f"[ERROR] {response.json().get('error')}")
+
+        except requests.RequestException as e:
+            print(f"[ERROR] 명령 전송 실패: {e}")
 
     def elevator_2f_call(self):
-        command = "CMO,FLOOR,2\n"
-        self.serial_thread.write(command)
-        self.label_ele_2f.setText("✅")
+        """엘리베이터 2층 호출"""
+        try:
+            response = requests.post(
+                f"{self.api_url}/api/command",
+                json={
+                    'device_id': 'ele_001',
+                    'metric_name': 'FLOOR',
+                    'value': '2'
+                },
+                timeout=5
+            )
+
+            if response.json().get('success'):
+                self.label_ele_2f.setText("✅")
+            else:
+                print(f"[ERROR] {response.json().get('error')}")
+
+        except requests.RequestException as e:
+            print(f"[ERROR] 명령 전송 실패: {e}")
 
     def elevator_3f_call(self):
-        command = "CMO,FLOOR,3\n"
-        self.serial_thread.write(command)
-        self.label_ele_3f.setText("✅")
+        """엘리베이터 3층 호출"""
+        try:
+            response = requests.post(
+                f"{self.api_url}/api/command",
+                json={
+                    'device_id': 'ele_001',
+                    'metric_name': 'FLOOR',
+                    'value': '3'
+                },
+                timeout=5
+            )
 
-    def handle_serial_data(self, data):
-        data = data.strip()
-        if not data:
-            return
+            if response.json().get('success'):
+                self.label_ele_3f.setText("✅")
+            else:
+                print(f"[ERROR] {response.json().get('error')}")
 
-        parts = data.split(',')
-        if len(parts) != 3:
-            print(f"[ERROR] invalid frame: {data!r}")
-            return
+        except requests.RequestException as e:
+            print(f"[ERROR] 명령 전송 실패: {e}")
 
-        data_type, metric_name, value = parts
+    def handle_serial_data(self, state: dict):
+        """상태에 따라 UI 업데이트"""
 
-        if data_type == "ACK":
-            self._handle_ack(metric_name, value)
-        elif data_type == "SEN":
-            self._handle_sensor(metric_name, value)
-        else:
-            print(f"[WARN] unsupported frame type: {data_type!r}")
+        print("[DEBUG] (handle_serial_data): " + str(state))
+        device_id = state.get('device_id')
+        data_type = state.get('data_type')
+        metric_name = state.get('metric_name')
+        value = state.get('value')
 
-    def _handle_ack(self, metric_name, value):
-        if metric_name == "FLOOR":
-            if value == "1":
-                self.label_ele_1f.setText("")
-            elif value == "2":
-                self.label_ele_2f.setText("")
-            elif value == "3":
-                self.label_ele_3f.setText("")
-            return
+        if data_type == "SEN":
+            if metric_name == 'RFID_ACCESS':
+                self.le_e_id.setText(str(value))
+                self.label_e_approv.setText("✅")
+            elif metric_name == 'RFID_DENY':
+                self.le_e_id.setText(str(value))
+                self.label_e_approv.setText("❌")
+            elif metric_name == 'FLOOR':
+                self.lcdNumber_floor.display(value)
+            elif metric_name == 'MOTOR' and value == '-1':
+                self.le_e_id.clear()
+                self.label_e_approv.setText(" ")
 
-        if metric_name == "MOTOR":
-            if self.curtain_auto_mode:
-                self.curtain_auto_mode = False
-                self._refresh_curtain_controls()
-            self._set_curtain_status_message(f"ACK:{value}")
-        elif metric_name == "MODE":
-            self.curtain_auto_mode = value.upper() == "AUTO"
-            self._refresh_curtain_controls()
-            self._set_curtain_status_message(f"MODE:{value}")
-        elif metric_name == "ERROR":
-            self._set_curtain_status_message(f"ERROR:{value}")
-        else:
-            print(f"[INFO] ACK ignored: {metric_name},{value}")
+    def start_polling(self):
+        """상태 폴링 시작"""
+        self.polling_thread = threading.Thread(
+            target=self._poll_state,
+            daemon=True
+        )
+        self.polling_thread.start()
+
+    def stop_polling(self):
+        """상태 폴링 중지"""
+        self.running = False
+        if self.polling_thread:
+            self.polling_thread.join(timeout=2)
+
+    def _poll_state(self):
+        """주기적으로 서버에서 상태 조회"""
+        while self.running:
+            try:
+                response = requests.get(
+                    f"{self.api_url}/api/state",
+                    timeout=2
+                )
+                state = response.json()
+
+                # UI 업데이트
+                self.handle_serial_data(state)
+
+            except requests.RequestException as e:
+                print(f"[ERROR] 상태 조회 실패: {e}")
+
+            time.sleep(self.polling_interval)
+
 
     def _handle_sensor(self, metric_name, value):
         if metric_name == "FLOOR":
@@ -317,6 +374,7 @@ class Ui_Dialog(object):
             return
 
         print(f"[INFO] sensor metric ignored: {metric_name},{value}")
+
 
     def curtain_open(self):
         self.serial_thread.write("CMO,MOTOR,OPEN\n")
@@ -392,12 +450,20 @@ class Ui_Dialog(object):
             self._refresh_curtain_controls()
 
 
+def main():
+    """메인 함수"""
+    app = QtWidgets.QApplication(sys.argv)
+    dialog = QtWidgets.QDialog()
+    ui = Ui_Dialog()
+    ui.setupUi(dialog)
+    ui.start_polling()
+    dialog.show()
+
+    try:
+        sys.exit(app.exec())
+    finally:
+        ui.stop_polling()
+
 
 if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    Dialog = QtWidgets.QDialog()
-    ui = Ui_Dialog()
-    ui.setupUi(Dialog)
-    Dialog.show()
-    sys.exit(app.exec())
+    main()
