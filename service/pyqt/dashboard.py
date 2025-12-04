@@ -1,12 +1,23 @@
 import serial
 import threading
 import time
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6.QtWidgets import *
+from PyQt6.QtGui import *
+from PyQt6 import uic
+from PyQt6.QtCore import *
 
+from_class = uic.loadUiType("./dashboard.ui")[0]
 
-class SerialThread(QtCore.QThread):
-    received_data = pyqtSignal(str)
+# Define serial port configurations
+# Adjust the COM port based on your environment
+SERIAL_PORTS = {
+    'elevator': 'COM3',
+    'entrance': 'COM4',
+    'curtain': 'COM5',
+}
+
+class SerialThread(QThread):
+    received_data = pyqtSignal(str, str)  # port_name, data
 
     def __init__(self, serial_port, baud_rate):
         super().__init__()
@@ -23,10 +34,10 @@ class SerialThread(QtCore.QThread):
                 if self.ser.in_waiting > 0:
                     data = self.ser.readline().decode('utf-8').strip()
                     if data:
-                        self.received_data.emit(data)
-                time.sleep(0.01)  # Small delay to prevent busy-waiting
+                        self.received_data.emit(self.serial_port, data)
+                time.sleep(0.01)
         except serial.SerialException as e:
-            print(f"Serial Error: {e}")
+            print(f"Serial Error on {self.serial_port}: {e}")
         finally:
             if self.ser and self.ser.is_open:
                 self.ser.close()
@@ -39,128 +50,13 @@ class SerialThread(QtCore.QThread):
         if self.ser and self.ser.is_open:
             self.ser.write(data.encode('utf-8'))
 
+class WindowClass(QMainWindow, from_class) :
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
 
-class Ui_Dialog(object):
-    def setupUi(self, Dialog):
-        Dialog.setObjectName("Dialog")
-        Dialog.resize(1039, 582)
-        self.groupBox_e = QtWidgets.QGroupBox(parent=Dialog)
-        self.groupBox_e.setGeometry(QtCore.QRect(70, 20, 341, 141))
-        self.groupBox_e.setObjectName("groupBox_e")
-        self.le_e_id = QtWidgets.QLineEdit(parent=self.groupBox_e)
-        self.le_e_id.setGeometry(QtCore.QRect(20, 50, 221, 41))
-        self.le_e_id.setReadOnly(True)
-        self.le_e_id.setObjectName("le_e_id")
-        self.label_e_id = QtWidgets.QLabel(parent=self.groupBox_e)
-        self.label_e_id.setGeometry(QtCore.QRect(20, 30, 66, 18))
-        self.label_e_id.setObjectName("label_e_id")
-        self.label_e_approv = QtWidgets.QLabel(parent=self.groupBox_e)
-        self.label_e_approv.setGeometry(QtCore.QRect(250, 50, 61, 41))
-        self.label_e_approv.setObjectName("label_e_approv")
-        self.pushButton_e = QtWidgets.QPushButton(parent=self.groupBox_e)
-        self.pushButton_e.setGeometry(QtCore.QRect(180, 100, 151, 30))
-        self.pushButton_e.setObjectName("pushButton_e")
-        self.groupBox_ele = QtWidgets.QGroupBox(parent=Dialog)
-        self.groupBox_ele.setGeometry(QtCore.QRect(70, 190, 341, 291))
-        self.groupBox_ele.setObjectName("groupBox_ele")
-        self.lcdNumber_floor = QtWidgets.QLCDNumber(parent=self.groupBox_ele)
-        self.lcdNumber_floor.setGeometry(QtCore.QRect(-110, 100, 181, 91))
-        self.lcdNumber_floor.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
-        self.lcdNumber_floor.setLineWidth(-1)
-        self.lcdNumber_floor.setObjectName("lcdNumber_floor")
-        self.label = QtWidgets.QLabel(parent=self.groupBox_ele)
-        self.label.setGeometry(QtCore.QRect(10, 90, 66, 18))
-        self.label.setObjectName("label")
-        self.pushButton_1f = QtWidgets.QPushButton(parent=self.groupBox_ele)
-        self.pushButton_1f.setGeometry(QtCore.QRect(190, 190, 88, 26))
-        self.pushButton_1f.setObjectName("pushButton_1f")
-        self.pushButton_2f = QtWidgets.QPushButton(parent=self.groupBox_ele)
-        self.pushButton_2f.setGeometry(QtCore.QRect(190, 130, 88, 26))
-        self.pushButton_2f.setObjectName("pushButton_2f")
-        self.pushButton_3f = QtWidgets.QPushButton(parent=self.groupBox_ele)
-        self.pushButton_3f.setGeometry(QtCore.QRect(190, 70, 88, 26))
-        self.pushButton_3f.setObjectName("pushButton_3f")
-        self.label_ele_3f = QtWidgets.QLabel(parent=self.groupBox_ele)
-        self.label_ele_3f.setGeometry(QtCore.QRect(170, 70, 16, 18))
-        self.label_ele_3f.setObjectName("label_ele_3f")
-        self.label_ele_2f = QtWidgets.QLabel(parent=self.groupBox_ele)
-        self.label_ele_2f.setGeometry(QtCore.QRect(170, 130, 16, 18))
-        self.label_ele_2f.setObjectName("label_ele_2f")
-        self.label_ele_1f = QtWidgets.QLabel(parent=self.groupBox_ele)
-        self.label_ele_1f.setGeometry(QtCore.QRect(170, 190, 16, 18))
-        self.label_ele_1f.setObjectName("label_ele_1f")
-        self.groupBox_home = QtWidgets.QGroupBox(parent=Dialog)
-        self.groupBox_home.setGeometry(QtCore.QRect(440, 20, 571, 491))
-        self.groupBox_home.setObjectName("groupBox_home")
-        self.widget_graph = QtWidgets.QWidget(parent=self.groupBox_home)
-        self.widget_graph.setGeometry(QtCore.QRect(129, 50, 371, 141))
-        self.widget_graph.setObjectName("widget_graph")
-        self.lcdNumber_temp = QtWidgets.QLCDNumber(parent=self.groupBox_home)
-        self.lcdNumber_temp.setGeometry(QtCore.QRect(10, 50, 101, 51))
-        self.lcdNumber_temp.setObjectName("lcdNumber_temp")
-        self.lcdNumber_hu = QtWidgets.QLCDNumber(parent=self.groupBox_home)
-        self.lcdNumber_hu.setGeometry(QtCore.QRect(10, 130, 101, 51))
-        self.lcdNumber_hu.setObjectName("lcdNumber_hu")
-        self.label_2 = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_2.setGeometry(QtCore.QRect(10, 30, 66, 18))
-        self.label_2.setObjectName("label_2")
-        self.label_3 = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_3.setGeometry(QtCore.QRect(10, 110, 66, 18))
-        self.label_3.setObjectName("label_3")
-        self.lcdNumber_lux = QtWidgets.QLCDNumber(parent=self.groupBox_home)
-        self.lcdNumber_lux.setGeometry(QtCore.QRect(20, 330, 101, 51))
-        self.lcdNumber_lux.setObjectName("lcdNumber_lux")
-        self.label_4 = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_4.setGeometry(QtCore.QRect(20, 300, 101, 18))
-        self.label_4.setObjectName("label_4")
-        self.pushButton_curOpen = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_curOpen.setGeometry(QtCore.QRect(20, 430, 121, 26))
-        self.pushButton_curOpen.setObjectName("pushButton_curOpen")
-        self.pushButton_curClose = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_curClose.setGeometry(QtCore.QRect(160, 430, 121, 26))
-        self.pushButton_curClose.setObjectName("pushButton_curClose")
-        self.pushButton_curStop = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_curStop.setGeometry(QtCore.QRect(290, 430, 121, 26))
-        self.pushButton_curStop.setObjectName("pushButton_curStop")
-        self.progressBar_cur = QtWidgets.QProgressBar(parent=self.groupBox_home)
-        self.progressBar_cur.setGeometry(QtCore.QRect(150, 330, 241, 41))
-        self.progressBar_cur.setProperty("value", 24)
-        self.progressBar_cur.setObjectName("progressBar_cur")
-        self.label_5 = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_5.setGeometry(QtCore.QRect(150, 300, 101, 18))
-        self.label_5.setObjectName("label_5")
-        self.label_airState = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_airState.setGeometry(QtCore.QRect(20, 200, 151, 18))
-        self.label_airState.setObjectName("label_airState")
-        self.label_heatState = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_heatState.setGeometry(QtCore.QRect(200, 200, 151, 18))
-        self.label_heatState.setObjectName("label_heatState")
-        self.label_humiState = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_humiState.setGeometry(QtCore.QRect(380, 200, 151, 18))
-        self.label_humiState.setObjectName("label_humiState")
-        self.pushButton_curAuto = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_curAuto.setGeometry(QtCore.QRect(430, 430, 121, 26))
-        self.pushButton_curAuto.setObjectName("pushButton_curAuto")
-        self.label_curState = QtWidgets.QLabel(parent=self.groupBox_home)
-        self.label_curState.setGeometry(QtCore.QRect(430, 400, 66, 18))
-        self.label_curState.setObjectName("label_curState")
-        self.pushButton_heat = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_heat.setGeometry(QtCore.QRect(200, 220, 151, 30))
-        self.pushButton_heat.setObjectName("pushButton_heat")
-        self.pushButton_air = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_air.setGeometry(QtCore.QRect(20, 220, 151, 30))
-        self.pushButton_air.setObjectName("pushButton_air")
-        self.pushButton_humi = QtWidgets.QPushButton(parent=self.groupBox_home)
-        self.pushButton_humi.setGeometry(QtCore.QRect(380, 220, 151, 30))
-        self.pushButton_humi.setObjectName("pushButton_humi")
-
-        self.retranslateUi(Dialog)
-        QtCore.QMetaObject.connectSlotsByName(Dialog)
-
-        # Initialize serial communication
-        self.serial_thread = SerialThread(serial_port='/dev/ttyACM0', baud_rate=9600)  # Adjust port and baud rate as needed
-        self.serial_thread.received_data.connect(self.handle_serial_data)
-        self.serial_thread.start()
+        self.serial_threads = {}
+        self.init_serial_ports()
 
         # Connect buttons to slots
         self.pushButton_1f.clicked.connect(self.elevator_1f_call)
@@ -174,112 +70,72 @@ class Ui_Dialog(object):
         self.label_ele_2f.setText("")
         self.label_ele_3f.setText("")
 
-    def retranslateUi(self, Dialog):
-        _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.groupBox_e.setTitle(_translate("Dialog", "공동현관"))
-        self.label_e_id.setText(_translate("Dialog", "ID"))
-        self.label_e_approv.setText(_translate("Dialog", ""))
-        self.pushButton_e.setText(_translate("Dialog", "공동현관 열기"))
-        self.groupBox_ele.setTitle(_translate("Dialog", "엘리베이터"))
-        self.label.setText(_translate("Dialog", "층"))
-        self.pushButton_1f.setText(_translate("Dialog", "1층"))
-        self.pushButton_2f.setText(_translate("Dialog", "2층"))
-        self.pushButton_3f.setText(_translate("Dialog", "3층"))
-        # self.label_ele_3f.setText(_translate("Dialog", "✅"))
-        # self.label_ele_2f.setText(_translate("Dialog", "✅"))
-        # self.label_ele_1f.setText(_translate("Dialog", "✅"))
-        self.groupBox_home.setTitle(_translate("Dialog", "Home"))
-        self.label_2.setText(_translate("Dialog", "온도(C)"))
-        self.label_3.setText(_translate("Dialog", "습도(%)"))
-        self.label_4.setText(_translate("Dialog", "외부조도(LUX)"))
-        self.pushButton_curOpen.setText(_translate("Dialog", "커튼 OPEN"))
-        self.pushButton_curClose.setText(_translate("Dialog", "커튼 CLOSE"))
-        self.pushButton_curStop.setText(_translate("Dialog", "커튼 STOP"))
-        self.label_5.setText(_translate("Dialog", "커튼 열림 정도"))
-        self.label_airState.setText(_translate("Dialog", "state"))
-        self.label_heatState.setText(_translate("Dialog", "state"))
-        self.label_humiState.setText(_translate("Dialog", "state"))
-        self.pushButton_curAuto.setText(_translate("Dialog", "커튼 Auto On/Off"))
-        self.label_curState.setText(_translate("Dialog", "state"))
-        self.pushButton_heat.setText(_translate("Dialog", "히터 ON/OFF/Auto"))
-        self.pushButton_air.setText(_translate("Dialog", "에어컨 ON/OFF/Auto"))
-        self.pushButton_humi.setText(_translate("Dialog", "가습기 ON/OFF/Auto"))
-
-    def entrance_open(self):
-        command = "CMO,MOTOR,1\n"
-        self.serial_thread.write(command)
-        self.label_e_approv.setText("✅")
+    def init_serial_ports(self):
+        for name, port in SERIAL_PORTS.items():
+            thread = SerialThread(serial_port=port, baud_rate=9600)
+            thread.received_data.connect(self.handle_serial_data)
+            thread.start()
+            self.serial_threads[name] = thread
+            print(f"Started serial thread for {name} on {port}")
 
     def elevator_1f_call(self):
         command = "CMO,FLOOR,1\n"
-        self.serial_thread.write(command)
-        self.label_ele_1f.setText("✅")
+        if 'elevator' in self.serial_threads:
+            self.serial_threads['elevator'].write(command)
+            self.label_ele_1f.setText("✅")
 
     def elevator_2f_call(self):
         command = "CMO,FLOOR,2\n"
-        self.serial_thread.write(command)
-        self.label_ele_2f.setText("✅")
+        if 'elevator' in self.serial_threads:
+            self.serial_threads['elevator'].write(command)
+            self.label_ele_2f.setText("✅")
 
     def elevator_3f_call(self):
         command = "CMO,FLOOR,3\n"
-        self.serial_thread.write(command)
-        self.label_ele_3f.setText("✅")
+        if 'elevator' in self.serial_threads:
+            self.serial_threads['elevator'].write(command)
+            self.label_ele_3f.setText("✅")
 
-    def handle_serial_data(self, data):
-        data = data.strip()
-        if not data:
+    def handle_serial_data(self, port, data):
+        # Find which device this data is from
+        device_name = None
+        for name, p in SERIAL_PORTS.items():
+            if p == port:
+                device_name = name
+                break
+        
+        if not device_name:
+            print(f"Data from unknown port {port}: {data}")
             return
 
-        # 1) ACK 처리
-        if data == "ACK,FLOOR,1":
-            self.label_ele_1f.setText("")
-            return
-        elif data == "ACK,FLOOR,2":
-            self.label_ele_2f.setText("")
-            return
-        elif data == "ACK,FLOOR,3":
-            self.label_ele_3f.setText("")
-            return
-
-        # 2) FLOOR SENSOR 처리
-        if data.startswith("SEN,FLOOR,"):
-            parts = data.split(',')
-            if len(parts) != 3:
-                print(f"[ERROR] invalid floor data: {data!r}")
-                return
-            try:
-                floor_number = int(parts[2])
-                self.lcdNumber_floor.display(floor_number)
-            except ValueError:
-                print(f"[ERROR] invalid floor number: {parts[2]!r}")
-            return
-
-        # 3) RFID 처리
-        parts = data.split(',')
-        if len(parts) != 3:
-            print(f"[ERROR] invalid RFID data: {data!r}")
-            return
-
-        data_type, metric_name, value = parts
-
-        if data_type == "SEN" and metric_name == "RFID_ACCESS":
-            self.le_e_id.setText(str(value))
-            self.label_e_approv.setText("✅")
-        elif data_type == "SEN" and metric_name == "RFID_DENY":
-            self.le_e_id.setText(str(value))
-            self.label_e_approv.setText("❌")
-        elif data_type == "SEN" and metric_name == "MOTOR" and value == "-1":
-            self.le_e_id.clear()
-            self.label_e_approv.setText("")
-
+        if device_name == 'elevator':
+            if data == "ACK,FLOOR,1":
+                self.label_ele_1f.setText("")
+            elif data == "ACK,FLOOR,2":
+                self.label_ele_2f.setText("")
+            elif data == "ACK,FLOOR,3":
+                self.label_ele_3f.setText("")
+            elif data.startswith("SEN,FLOOR,"):
+                try:
+                    floor_number = int(data.split(',')[2])
+                    self.lcdNumber_floor.display(floor_number)
+                except (ValueError, IndexError) as e:
+                    print(f"Error parsing elevator floor number: {e}")
+        
+        elif device_name == 'entrance':
+            # Add logic for entrance device here
+            print(f"Entrance data: {data}")
+            pass
+        
+        elif device_name == 'curtain':
+            # Add logic for curtain device here
+            print(f"Curtain data: {data}")
+            pass
 
 
 if __name__ == "__main__":
     import sys
-    app = QtWidgets.QApplication(sys.argv)
-    Dialog = QtWidgets.QDialog()
-    ui = Ui_Dialog()
-    ui.setupUi(Dialog)
+    app = QApplication(sys.argv)
+    Dialog = WindowClass()
     Dialog.show()
     sys.exit(app.exec())
