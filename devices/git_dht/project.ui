@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>613</width>
+    <height>436</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QPushButton" name="pbnAir">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>300</y>
+     <width>111</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>에어컨_ON</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbnHeat">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>300</y>
+     <width>111</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>히터_ON</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pbnHum">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>300</y>
+     <width>111</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>가습기_ON</string>
+   </property>
+  </widget>
+  <widget class="QLCDNumber" name="LCD_1">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>360</y>
+     <width>101</width>
+     <height>61</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLCDNumber" name="LCD_2">
+   <property name="geometry">
+    <rect>
+     <x>130</x>
+     <y>360</y>
+     <width>101</width>
+     <height>61</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QWidget" name="widget_graph" native="true">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>10</y>
+     <width>571</width>
+     <height>281</height>
+    </rect>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
