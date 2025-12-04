@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request
 
 from database import DatabaseHandler
 from monitor import SerialMonitor
-from queue_processor import QueueProcessor
+from queue_processor import CMORequest, QueueProcessor
 
 
 class SystemState:
@@ -98,13 +98,19 @@ class SerialMonitorApp:
                 
                 # CMO 명령 생성
                 command = f"CMO,{metric_name},{value}"
+
+                cmo = CMORequest(
+                    device_id=device_id,
+                    metric_name=metric_name,
+                    value=value,
+                    command=command
+                )
+                self.cmd_queue.put(cmo)
                 
-                # 디바이스로 전송
-                monitor = self.monitors[device_id]
-                success = monitor.send_command(command)
+                print(f"[QUEUE] CMO 큐에 추가: {device_id} (명령: {command})")
                 
                 return jsonify({
-                    'success': success,
+                    'success': True,
                     'device_id': device_id,
                     'command': command
                 })
