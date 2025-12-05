@@ -10,21 +10,11 @@ Stepper stepper(STEPS, 10, 11, 12, 13);
 
 unsigned long previousMillis = 0;
 const long interval = 5000;
+const char* deviceId = "DHT-01";
 
 bool motorRunning = false;
 
-void setup()
-{
-  Serial.begin(9600);
-  dht.begin();
-  pinMode(R_LED, OUTPUT);
-  stepper.setSpeed(200);
-  pinMode(relayPin, OUTPUT);
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH);
-}
-
-void loop() 
+void handleHumidityAndTemperature()
 {
   unsigned long currentMillis = millis();
 
@@ -37,6 +27,7 @@ void loop()
       //습도 측정
       int hum = dht.getHumidity();
       Serial.println("---------");
+      Serial.println(deviceId);
       //온도 결과
       Serial.print("온도:");
       Serial.print(tempDeg, 1);
@@ -84,12 +75,28 @@ void loop()
           motorRunning = false;
         }
       }
-      
     }
     previousMillis = currentMillis;
   }
-    if (motorRunning)
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  dht.begin();
+  pinMode(R_LED, OUTPUT);
+  stepper.setSpeed(150);
+  pinMode(relayPin, OUTPUT);
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+}
+
+void loop() 
+{
+
+  handleHumidityAndTemperature();
+  if (motorRunning)
   {
     stepper.step(STEPS);  // 한 스텝씩 계속 회전
-  }
+  } 
 }

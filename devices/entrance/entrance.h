@@ -26,6 +26,8 @@ private:
 	const int ECHO = A5;
 	const int THRESHOLD = 30;
 	const int MOTOR_STEPS = 2048;
+	const char DELIMITER = ',';
+	const int BUFFER_SIZE = 64;
 
 	MFRC522 rc522;
 	Stepper stepper;
@@ -34,6 +36,7 @@ private:
 	bool m_is_valid;
 	byte m_card_uid[10];
 	byte m_card_uid_size;
+	String m_serial_buffer;
 
 	MFRC522::StatusCode checkAuth(int index, MFRC522::MIFARE_Key key);
 	void toBytes(byte* buffer, int data, int offset = 0);
@@ -41,6 +44,8 @@ private:
 	long detectDistance();
 	const char* eventTypeToString(EVENT_TYPE type);
 	void set_device_id();
+	void parseSerialCommand(String command);
+	void handleMotorCommand(int action);
 
 public:
 	Entrance();
@@ -52,7 +57,7 @@ public:
 	MFRC522::StatusCode readInteger(int index, MFRC522::MIFARE_Key key, int& data);
 	MFRC522::StatusCode writeInteger(int index, MFRC522::MIFARE_Key key, int data);
 
-	void createLog(EVENT_TYPE type);
+	void createLog(String dataType, String metricName, String value);
 };
 
 #endif

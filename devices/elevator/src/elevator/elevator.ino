@@ -20,7 +20,8 @@ unsigned long wait_time = 0;
 // variables
 const int button_pin_arr[] = {BUTTONFIRST_PIN, BUTTONSECOND_PIN, BUTTONTHIRD_PIN};
 const int LED_pin_arr[] = {LEDFIRST_PIN, LEDSECOND_PIN, LEDTHIRD_PIN};
-const byte ele_LED_pin_arr[] = {
+const byte ele_LED_pin_arr[] = 
+{
   B00000001, 
   B00000010, 
   B00000100, 
@@ -31,11 +32,24 @@ const byte ele_LED_pin_arr[] = {
 };
 bool LED_stat[] = {false, false, false};
 
-enum{WAIT, UP, DOWN};
-int ele_mode = WAIT;
+enum class ElevatorMode {WAIT, UP, DOWN};
+ElevatorMode ele_mode = ElevatorMode::WAIT;
 int ele_dst[] = {0, 0};
 int ele_pos = 0;
 byte seven_seg_data_to_display;
+bool floor_report_sent_for_current_pos = false; // Add this new global flag
+unsigned long previous_floor_report_time = 0; // Add this new global variable for 1-second reporting
+
+void sendElevatorModeToPC(ElevatorMode mode) {
+  Serial.print("SEN,ELE_DIR,");
+  if (mode == ElevatorMode::WAIT) {
+    Serial.println("0");
+  } else if (mode == ElevatorMode::UP) {
+    Serial.println("1");
+  } else if (mode == ElevatorMode::DOWN) {
+    Serial.println("2");
+  }
+}
 
 // 7-segment display data for numbers 1, 2, 3 (common anode, DP gfedcba)
 const byte seven_seg_digits[] = {
@@ -96,7 +110,7 @@ void assignEleDst()
     {
       switch (ele_mode)
       {
-        case UP:
+        case ElevatorMode::UP:
           if (ele_pos <= fromFloorToElepos(max_req))
           {
             ele_dst[1] = max_req;
@@ -110,7 +124,7 @@ void assignEleDst()
             ele_dst[0] = min_req;
           }
           break;
-        case DOWN:
+        case ElevatorMode::DOWN:
           if (ele_pos >= fromFloorToElepos(min_req))
           {
             ele_dst[0] = min_req;
@@ -123,13 +137,19 @@ void assignEleDst()
             ele_dst[1] = max_req;
           }
           break;
-        case WAIT:
+        case ElevatorMode::WAIT:
           ele_dst[0] = min_req;
           ele_dst[1] = max_req;
           if (ele_pos > fromFloorToElepos(min_req))
-            ele_mode = DOWN;
+          {
+            ele_mode = ElevatorMode::DOWN;
+            sendElevatorModeToPC(ElevatorMode::DOWN);
+          }
           else if (ele_pos < fromFloorToElepos(min_req))
-            ele_mode = UP;
+          {
+            ele_mode = ElevatorMode::UP;
+            sendElevatorModeToPC(ElevatorMode::UP);
+          }
           else
             Serial.println("The elevator is already on the floor!");
       }
@@ -138,7 +158,7 @@ void assignEleDst()
     {
       switch (ele_mode)
       {
-        case UP:
+        case ElevatorMode::UP:
           if (ele_pos % 3 == 0)
           {
             min_req = fromEleposeToFloor(ele_pos);
@@ -150,7 +170,7 @@ void assignEleDst()
             max_req = fromEleposeToFloor(ele_pos) + 1;
           }
           break;
-        case DOWN:
+        case ElevatorMode::DOWN:
           if (ele_pos % 3 == 0)
           {
             min_req = fromEleposeToFloor(ele_pos);
@@ -181,6 +201,8 @@ void buttonEvent(byte floor)
     digitalWrite(LED_pin_arr[floor], LOW);
     LED_stat[floor] = false;
     Serial.print("Cancel the Floor "); Serial.println(floor+1);
+    Serial.print("ACK,CANCEL,");
+    Serial.println(floor + 1);
   }
 
   assignEleDst();
@@ -189,20 +211,31 @@ void buttonEvent(byte floor)
 
 void arriveAtDstUpdateMode()
 {
-
-  if (ele_pos % 3 == 0)
+  if (ele_pos % 3 == 0) // Elevator is at a floor position
   {
-    int ele_cur_floor= fromEleposeToFloor(ele_pos);
+    int ele_cur_floor = fromEleposeToFloor(ele_pos);
+
+    // Send SEN,FLOOR message once per arrival at a floor
+    if (!floor_report_sent_for_current_pos) {
+      Serial.print("SEN,FLOOR,");
+      Serial.println(ele_cur_floor + 1);
+      floor_report_sent_for_current_pos = true; // Mark as sent for this specific floor arrival
+    }
+
     if (LED_stat[ele_cur_floor] == true)
     {
       digitalWrite(LED_pin_arr[ele_cur_floor], LOW);
       LED_stat[ele_cur_floor] = false;
       Serial.print("This is floor "); Serial.println(ele_cur_floor+1);
       Serial.println("Door is Opend");
-      wait_time = 5000; 
+      wait_time = millis() + 5000; 
+      // SEN,FLOOR is now handled by the flag above, only send ACK here
+      Serial.print("ACK,FLOOR,");
+      Serial.println(ele_cur_floor + 1);
     }
+    // Removed the else if (ele_mode != ElevatorMode::WAIT) block as SEN,FLOOR is now handled by the flag.
     
-    seven_seg_data_to_display = seven_seg_digits[ele_cur_floor];
+    // seven_seg_data_to_display is now updated in updateElePos
     updateDisplays(ele_LED_pin_arr[ele_pos], seven_seg_data_to_display);
 
     assignEleDst();
@@ -210,37 +243,41 @@ void arriveAtDstUpdateMode()
 
     switch (ele_mode)
     {
-      case WAIT:
+      case ElevatorMode::WAIT:
         break;
 
-      case UP:
+      case ElevatorMode::UP:
         if (ele_cur_floor ==  ele_dst[1])
         {
           if (ele_cur_floor == ele_dst[0])
           {
-            ele_mode = WAIT;
+            ele_mode = ElevatorMode::WAIT;
             Serial.println("Switch Mode : UP -> WAIT");
+            sendElevatorModeToPC(ElevatorMode::WAIT);
           }
           else
           {
-            ele_mode = DOWN;
+            ele_mode = ElevatorMode::DOWN;
             Serial.println("Switch Mode : UP -> DOWN");
+            sendElevatorModeToPC(ElevatorMode::DOWN);
           }
         }
         break;
 
-      case DOWN:
+      case ElevatorMode::DOWN:
         if (ele_cur_floor ==  ele_dst[0])
         {
           if (ele_cur_floor == ele_dst[1])
           {
-            ele_mode = WAIT;
+            ele_mode = ElevatorMode::WAIT;
             Serial.println("Switch Mode : DOWN -> WAIT");
+            sendElevatorModeToPC(ElevatorMode::WAIT);
           }
           else
           {
-            ele_mode = UP;
+            ele_mode = ElevatorMode::UP;
             Serial.println("Switch Mode : DOWN -> UP");
+            sendElevatorModeToPC(ElevatorMode::UP);
           }
         }
         break;
@@ -254,34 +291,106 @@ void arriveAtDstUpdateMode()
 
 void updateElePos()
 {
+  int old_ele_pos = ele_pos; // Store old position
   switch (ele_mode)
   {
-    case WAIT:
+    case ElevatorMode::WAIT:
       break;
-    case UP:
-      if (ele_pos == 6) // 안전장치
-      {
-        Serial.println("Arrive at the upper limit but still on the mode of UP");
-      }
-      else
+    case ElevatorMode::UP:
+      if (ele_pos < 6) // Safety check to prevent going out of bounds
       {
         ele_pos += 1;
       }
-      break;
-    case DOWN:
-      if (ele_pos == 0) // 안전장치
+      else
       {
-        Serial.println("Arrive at the lower limit but still on the mode of DOWN");
+        Serial.println("Arrive at the upper limit but still on the mode of UP");
+      }
+      break;
+    case ElevatorMode::DOWN:
+      if (ele_pos > 0) // Safety check to prevent going out of bounds
+      {
+        ele_pos -= 1;
       }
       else
       {
-        ele_pos -= 1;
+        Serial.println("Arrive at the lower limit but still on the mode of DOWN");
       }
       break;
     default:
       break;
   }
+
+  // Update 7-segment display data immediately after ele_pos changes
+  int current_floor_display = fromEleposeToFloor(ele_pos);
+  if (current_floor_display >= 0 && current_floor_display < (sizeof(seven_seg_digits) / sizeof(seven_seg_digits[0]))) {
+    seven_seg_data_to_display = seven_seg_digits[current_floor_display];
+  } else {
+    seven_seg_data_to_display = B11111111; // Display blank or error if floor is out of range
+  }
+  
   updateDisplays(ele_LED_pin_arr[ele_pos], seven_seg_data_to_display);
+  
+  // Reset the flag if the elevator has moved
+  if (ele_pos != old_ele_pos) {
+    floor_report_sent_for_current_pos = false;
+  }
+}
+
+void handleSerialCommand() 
+{
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+
+    // Split the command string by commas
+    int firstComma = command.indexOf(',');
+    if (firstComma == -1) return; 
+
+    int secondComma = command.indexOf(',', firstComma + 1);
+    if (secondComma == -1) return;
+
+    String cmdType = command.substring(0, firstComma);
+    String cmdTarget = command.substring(firstComma + 1, secondComma);
+    String cmdValue = command.substring(secondComma + 1);
+
+    if (cmdType == "CMO" && cmdTarget == "FLOOR") 
+    {
+      int floorNum = cmdValue.toInt();
+      if (floorNum >= 1 && floorNum <= 3) 
+      {
+        int targetFloor = floorNum - 1;
+        int currentFloor = fromEleposeToFloor(ele_pos);
+
+        // if the door is open and the call is for the current floor, reset the timer
+        if (wait_time != 0 && ele_pos % 3 == 0 && currentFloor == targetFloor) 
+        {
+          wait_time = millis() + 5000;
+          Serial.println("Door wait time has been reset.");
+        } 
+        // otherwise, if the request light is off, turn it on and assign destination
+        else if (LED_stat[targetFloor] == false) 
+        {
+          digitalWrite(LED_pin_arr[targetFloor], HIGH);
+          LED_stat[targetFloor] = true;
+          Serial.print("Remote call at Floor "); Serial.println(targetFloor + 1);
+          assignEleDst();
+        }
+      }
+    }
+    else if (cmdType == "CMO" && cmdTarget == "CANCEL")
+    {
+      int floorNum = cmdValue.toInt();
+      if (floorNum >= 1 && floorNum <= 3) {
+        int targetFloor = floorNum - 1;
+        if (LED_stat[targetFloor] == true) {
+          digitalWrite(LED_pin_arr[targetFloor], LOW);
+          LED_stat[targetFloor] = false;
+          Serial.print("Remote cancel for Floor "); Serial.println(targetFloor + 1);
+          assignEleDst();
+        }
+      }
+    }
+  }
 }
 
 
@@ -298,10 +407,20 @@ void setup() {
   pinMode(BUTTONSECOND_PIN, INPUT);
   pinMode(BUTTONTHIRD_PIN, INPUT);
 
+  //updateDisplays(0x00, 0xFF); 
+  //delay(100); // 잠시 대기하여 초기화된 상태를 확실히 보여줍니다. 
+  // --- 💡 새로 추가된 초기화 코드 끝 💡 ---
+
+  Serial.println("SEN,FLOOR,1");
+  previous_floor_report_time = millis(); // Initialize the new timer for 1-second floor reporting
+
+  // 초기화 후, 엘리베이터가 시작 위치(0층)에 있음을 표시합니다.
   updateDisplays(ele_LED_pin_arr[ele_pos], seven_seg_digits[fromEleposeToFloor(ele_pos)]);
+
 }
 
 void loop() {
+  handleSerialCommand();
 
   byte button;
 
@@ -322,21 +441,18 @@ void loop() {
   
   arriveAtDstUpdateMode();
 
-  if (wait_time != 0) 
-  {
-    // Serial.print(wait_time);
-    wait_time--;
-    if (wait_time == 0)
-    {
+  current_time = millis();
+  if (wait_time != 0) {
+    if (current_time >= wait_time) {
       Serial.println("Door is closed");
+      wait_time = 0;
     }
   }
-  else
-  {
-    current_time = millis();
+
+  if (wait_time == 0) {
     if (current_time - previous_time > 1000) // 1초마다 엘리베이터 이동
     {
-      if (ele_mode != WAIT)
+      if (ele_mode != ElevatorMode::WAIT)
       {
         Serial.print("Upper Dst: "); Serial.print(ele_dst[1]+1); Serial.print(" Lower Dst: "); Serial.println(ele_dst[0]+1);
       }
@@ -345,5 +461,15 @@ void loop() {
     }
   }
 
-
+  // Send current floor every second
+  if (current_time - previous_floor_report_time > 1000) {
+    Serial.print("SEN,FLOOR,");
+    int floor_to_report = fromEleposeToFloor(ele_pos) + 1; // Default
+    if (ele_mode == ElevatorMode::DOWN && ele_pos % 3 != 0) {
+      // If moving down and between floors, report the floor it just left (the one above)
+      floor_to_report = fromEleposeToFloor(ele_pos) + 2;
+    }
+    Serial.println(floor_to_report);
+    previous_floor_report_time = current_time;
+  }
 }
