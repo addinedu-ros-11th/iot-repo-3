@@ -20,8 +20,10 @@ def main():
     
     # 포트 설정
     port_config = {
-        'ent_001': '/dev/ttyACM0',
-        'ele_001': '/dev/ttyACM1',
+        'ent_001': '/dev/ttyACM1',
+        'ele_001': '/dev/ttyACM0',
+        'dht_001': '/dev/ttyACM9',
+        'cur_001': '/dev/ttyACM#',
     }
     
     # 애플리케이션 실행

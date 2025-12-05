@@ -71,6 +71,14 @@ class SerialMonitor:
         if not parsed:
             return
         
+        if hasattr(self, 'system_state') and self.system_state:
+            self.system_state.update(
+                parsed.device_id,
+                parsed.data_type,
+                parsed.metric_name,
+                parsed.value
+        )
+        
         if parsed.data_type == 'CMD':
             self._handle_cmd(parsed)
         
@@ -118,7 +126,7 @@ class SerialMonitor:
     def _log_received(self, data: str):
         """수신 로그"""
         ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        print(f"[{ts}] [{self.port}] 수신: {data}")
+        #print(f"[{ts}] [{self.port}] 수신: {data}")
     
     def send_command(self, command: str) -> bool:
         """명령 전송"""

@@ -165,21 +165,25 @@ class DisplayManager(QObject):
         self.lcd1 = lcd1
         self.lcd2 = lcd2
         self.graph_canvas = graph_canvas
+        self.latest_temp = None
+        self.latest_hum = None
     
     def update_display(self, data):
         """시리얼 데이터를 파싱하여 LCD와 그래프 업데이트"""
         try:
-            if "SEN,TEM" in data and "HUM" in data:
+            if data.startswith("SEN"):
                 parts = data.split(',')
-                temperature = float(parts[2])
-                humidity = int(parts[4])
-                
-                # LCD 업데이트
-                self.lcd1.display(temperature)
-                self.lcd2.display(humidity)
-                
-                # 그래프 업데이트
-                self.graph_canvas.update_graph(temperature, humidity)
+                if len(parts) >= 3:
+                    if parts[1] == "TEM":
+                        self.latest_temp = int(parts[2])
+                        self.lcd1.display(self.latest_temp)
+                    elif parts[1] == "HUM":
+                        self.latest_hum = int(parts[2])
+                        self.lcd2.display(self.latest_hum)
+
+                # 그래프는 temp와 hum 둘 다 있으면 업데이트
+                if self.latest_temp is not None and self.latest_hum is not None:
+                    self.graph_canvas.update_graph(self.latest_temp, self.latest_hum)
         except Exception as e:
             print(f"Error in update_display: {e}")
 

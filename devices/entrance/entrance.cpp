@@ -115,7 +115,8 @@ void Entrance::loop()
 		
 		if (m_is_valid) 
 		{ 
-			stepper.step(MOTOR_STEPS);
+			stepper.step(-MOTOR_STEPS);
+			stepper.step(-MOTOR_STEPS);
 			m_open_time = millis();
 
 			Serial.print("[DEBUG] Door opened at: ");
@@ -180,7 +181,8 @@ void Entrance::closeDoor()
 	m_open_time = 0;
 	m_is_detected = false;
 	m_is_valid = false;
-	stepper.step(-MOTOR_STEPS);
+	stepper.step(MOTOR_STEPS);
+	stepper.step(MOTOR_STEPS);
 
 	digitalWrite(STEP_INT4, LOW);
 	digitalWrite(STEP_INT2, LOW);
@@ -363,11 +365,14 @@ void Entrance::handleMotorCommand(int action)
 	{
 		m_is_valid = true;
 
-		Serial.print("ACK,");
-		Serial.print(m_entrance_device_id);
-		Serial.println(",1");
+		Serial.println("ACK,FLOOR,1");
 	}
-	else 
+	else if (action == -1)
+	{
+		m_is_valid = false;
+
+		Serial.println("ACK,FLOOR,-1");
+	}
 	{
 		Serial.print("[ERROR] Invalid action value: ");
 		Serial.println(action);

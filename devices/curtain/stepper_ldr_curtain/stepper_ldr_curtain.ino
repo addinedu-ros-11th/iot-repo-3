@@ -22,8 +22,11 @@ public:
       motorDirection(0),
       lastTelemetryTime(0),
       motorSpeedRpm(motorRpm),
-        controlMode(MODE_AUTO),
-      commandIndex(0) {
+      controlMode(MODE_AUTO),
+      commandIndex(0),
+      lastReportedLight(-1),
+      lastReportedStep(-1),
+      lastReportedMotorDir(999) {
   }
 
   void begin() {
@@ -165,9 +168,29 @@ private:
   }
 
   void emitTelemetry(int lightValue) {
-    sendFrame("SEN", "LIGHT", String(lightValue));
-    sendFrame("SEN", "CUR_STEP", currentStep);
-    sendFrame("SEN", "MOTOR_DIR", motorDirection);
+    bool didSend = false;
+
+    if (lightValue != lastReportedLight) {
+      sendFrame("SEN", "LIGHT", String(lightValue));
+      lastReportedLight = lightValue;
+      didSend = true;
+    }
+
+    if (currentStep != lastReportedStep) {
+      sendFrame("SEN", "CUR_STEP", currentStep);
+      lastReportedStep = currentStep;
+      didSend = true;
+    }
+
+    if (motorDirection != lastReportedMotorDir) {
+      sendFrame("SEN", "MOTOR_DIR", motorDirection);
+      lastReportedMotorDir = motorDirection;
+      didSend = true;
+    }
+
+    if (!didSend) {
+      return;
+    }
   }
 
   void applyAutoLogic(int lightValue) {
@@ -236,6 +259,10 @@ private:
 
   char commandBuffer[64];
   size_t commandIndex;
+
+  int lastReportedLight;
+  long lastReportedStep;
+  int lastReportedMotorDir;
 };
 
 CurtainController curtainController(

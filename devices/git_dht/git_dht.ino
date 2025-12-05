@@ -31,7 +31,8 @@ void handleHumidityAndTemperatureAIRHEAT()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -60,7 +61,8 @@ void handleHumidityAndTemperatureAIRHUM()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -93,7 +95,8 @@ void handleHumidityAndTemperatureHEATHUM()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
       
@@ -126,7 +129,8 @@ void handleHumidityAndTemperatureAIR()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -179,7 +183,8 @@ void handleHumidityAndTemperatureHEAT()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -232,7 +237,8 @@ void handleHumidityAndTemperatureHUM()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -289,7 +295,8 @@ void handleHumidityAndTemperature()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
 
@@ -348,7 +355,8 @@ void handleHumidityAndTemperatureNO()
       int hum = dht.getHumidity();
       Serial.print("SEN");
       Serial.print(",TEM,") ;
-      Serial.print(tempDeg) ;
+      Serial.println(tempDeg) ;
+      Serial.print("SEN");
       Serial.print(",HUM,");
       Serial.println(hum) ;
     }
@@ -475,7 +483,7 @@ void loop()
   else if ((HeatOnControl || HeatStop) && (HumOnControl || HumStop))
   {
     handleHumidityAndTemperatureHEATHUM();
-  }
+  } 
   
   // === 1개 조합 ===
   else if (AirOnControl || AirStop)
