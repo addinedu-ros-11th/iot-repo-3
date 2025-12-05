@@ -348,20 +348,34 @@ class Ui_Dialog(object):
     def elevator_1f_call(self):
         """엘리베이터 1층 호출"""
         try:
-            response = requests.post(
-                f"{self.api_url}/api/command",
-                json={
-                    'device_id': 'ele_001',
-                    'metric_name': 'FLOOR',
-                    'value': '1'
-                },
-                timeout=5
-            )
-
-            if response.json().get('success'):
-                self.label_ele_1f.setText("✅")
+            if self.label_ele_1f.text() == "✅":
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'CANCEL',
+                        'value': '1'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_1f.setText(" ")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
             else:
-                print(f"[ERROR] {response.json().get('error')}")
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'FLOOR',
+                        'value': '1'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_1f.setText("✅")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
 
         except requests.RequestException as e:
             print(f"[ERROR] 명령 전송 실패: {e}")
@@ -369,42 +383,68 @@ class Ui_Dialog(object):
     def elevator_2f_call(self):
         """엘리베이터 2층 호출"""
         try:
-            response = requests.post(
-                f"{self.api_url}/api/command",
-                json={
-                    'device_id': 'ele_001',
-                    'metric_name': 'FLOOR',
-                    'value': '2'
-                },
-                timeout=5
-            )
-
-            if response.json().get('success'):
-                self.label_ele_2f.setText("✅")
+            if self.label_ele_2f.text() == "✅":
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'CANCEL',
+                        'value': '2'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_2f.setText(" ")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
             else:
-                print(f"[ERROR] {response.json().get('error')}")
-
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'FLOOR',
+                        'value': '2'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_2f.setText("✅")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
         except requests.RequestException as e:
             print(f"[ERROR] 명령 전송 실패: {e}")
 
     def elevator_3f_call(self):
         """엘리베이터 3층 호출"""
         try:
-            response = requests.post(
-                f"{self.api_url}/api/command",
-                json={
-                    'device_id': 'ele_001',
-                    'metric_name': 'FLOOR',
-                    'value': '3'
-                },
-                timeout=5
-            )
-
-            if response.json().get('success'):
-                self.label_ele_3f.setText("✅")
+            if self.label_ele_3f.text() == "✅":
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'CANCEL',
+                        'value': '3'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_3f.setText("")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
             else:
-                print(f"[ERROR] {response.json().get('error')}")
-
+                response = requests.post(
+                    f"{self.api_url}/api/command",
+                    json={
+                        'device_id': 'ele_001',
+                        'metric_name': 'FLOOR',
+                        'value': '3'
+                    },
+                    timeout=5
+                )
+                if response.json().get('success'):
+                    self.label_ele_3f.setText("✅")
+                else:
+                    print(f"[ERROR] {response.json().get('error')}")
         except requests.RequestException as e:
             print(f"[ERROR] 명령 전송 실패: {e}")
 
