@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Stepper.h>
+#include <AccelStepper.h>
 
 class Entrance 
 {
@@ -24,13 +25,13 @@ private:
 	const int STEP_INT1 = 2;
 	const int TRIG = A4;
 	const int ECHO = A5;
-	const int THRESHOLD = 30;
+	const int THRESHOLD = 5;
 	const int MOTOR_STEPS = 2048;
 	const char DELIMITER = ',';
 	const int BUFFER_SIZE = 64;
 
 	MFRC522 rc522;
-	Stepper stepper;
+	AccelStepper stepper;
 	unsigned long m_open_time;
 	bool m_is_detected;
 	bool m_is_valid;

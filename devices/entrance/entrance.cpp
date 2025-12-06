@@ -1,16 +1,20 @@
 #include "entrance.h"
 #include <EEPROM.h>
+#include <AccelStepper.h>
 
 bool Entrance::getIsValid()
 {
 	return m_is_valid;
 }
+enum DoorState { DOOR_IDLE, DOOR_OPENING, DOOR_OPEN, DOOR_CLOSING };
+DoorState doorState = DOOR_IDLE;
 
-Entrance::Entrance() : rc522(SS_PIN, RST_PIN), stepper(MOTOR_STEPS, STEP_INT4, STEP_INT2, STEP_INT3, STEP_INT1) 
+Entrance::Entrance() : rc522(SS_PIN, RST_PIN), stepper(AccelStepper::FULL4WIRE, STEP_INT1, STEP_INT3, STEP_INT2, STEP_INT4) 
 {
 	m_open_time = 0;
 	m_is_detected = false;
 	m_is_valid = false;
+	doorState = DOOR_IDLE;
 }
 
 void Entrance::setup() 
@@ -21,7 +25,10 @@ void Entrance::setup()
 	rc522.PCD_Init();
 	pinMode(TRIG, OUTPUT);
 	pinMode(ECHO, INPUT);
-	stepper.setSpeed(10);
+	stepper.setMaxSpeed(700);
+	stepper.setAcceleration(1000);
+	stepper.setPinsInverted(false, false, true);
+
 	Serial.println(F("Entrance System Setup Done"));
 	set_device_id();
 }
@@ -53,7 +60,7 @@ void Entrance::loop()
 	}
 
 	// ✅ 상태 1: 카드 대기 중
-	if (m_open_time == 0)
+	if (doorState == DOOR_IDLE)
 	{
 		if (rc522.PICC_IsNewCardPresent() && rc522.PICC_ReadCardSerial()) 
 		{
@@ -73,7 +80,6 @@ void Entrance::loop()
 			Serial.println();
 
 			int index = 61;
-
 			MFRC522::MIFARE_Key key;
 			
 			for (int i = 0; i < 6; i++) 
@@ -113,28 +119,41 @@ void Entrance::loop()
 			rc522.PCD_StopCrypto1();
 		}
 		
+		// ✅ 카드가 유효하면 문 열기 시작
 		if (m_is_valid) 
 		{ 
-			stepper.step(-MOTOR_STEPS);
-			stepper.step(-MOTOR_STEPS);
+			stepper.moveTo(MOTOR_STEPS * 2);
+			doorState = DOOR_OPENING;
 			m_open_time = millis();
 
 			Serial.print("[DEBUG] Door opened at: ");
 			Serial.println(m_open_time);
 			createLog("SEN", "MOTOR", String(1));
 			createLog("CMD", "FLOOR", String(1));
-			m_is_valid = false;\
+			m_is_valid = false;
 		}
 	}
-	// ✅ 상태 2: 문이 열려있는 중 (거리 감지)
-	else if (m_open_time > 0 && (millis() - m_open_time) < 3000)
+	// ✅ 상태 2: 문이 열리는 중
+	else if (doorState == DOOR_OPENING)
+	{
+		stepper.run();
+
+		if (!stepper.isRunning()) 
+		{
+			doorState = DOOR_OPEN;
+			m_open_time = millis();
+			Serial.println("[DEBUG] Door fully opened");
+		}
+	}
+	// ✅ 상태 3: 문이 열려있는 중 (거리 감지)
+	else if (doorState == DOOR_OPEN && (millis() - m_open_time) < 3000)
 	{
 		long dist = detectDistance();
 		
 		if (dist != 0 && dist < THRESHOLD) 
 		{
 			m_is_detected = true;
-			m_open_time = millis();
+			m_open_time = millis();  // 타이머 리셋
 			Serial.println("[DEBUG] Object detected, door stays open");
 			createLog("SEN", "DISTANCE", (String)dist);
 		} 
@@ -143,11 +162,29 @@ void Entrance::loop()
 			m_is_detected = false;
 		}
 	}
-	// ✅ 상태 3: 3초 초과 또는 문이 닫혀있음
-	else if ((millis() - m_open_time) >= 3000)
+	// ✅ 상태 4: 3초 초과 또는 문 닫기 필요
+	else if (doorState == DOOR_OPEN && (millis() - m_open_time) >= 3000)
 	{
+		Serial.println("[DEBUG] 3 seconds passed, closing door");
 		closeDoor();
 	}
+	// ✅ 상태 5: 문이 닫히는 중
+	else if (doorState == DOOR_CLOSING)
+	{
+		stepper.run();
+		
+		if (!stepper.isRunning()) 
+		{
+			doorState = DOOR_IDLE;
+			Serial.println("[DEBUG] Door fully closed");
+			digitalWrite(STEP_INT4, LOW);
+			digitalWrite(STEP_INT2, LOW);
+			digitalWrite(STEP_INT3, LOW);
+			digitalWrite(STEP_INT1, LOW);
+		}
+	}
+
+	stepper.run();
 }
 
 void Entrance::waitForCard() 
@@ -176,19 +213,16 @@ void Entrance::waitForCard()
 	}
 }
 
+
 void Entrance::closeDoor() 
 {
-	m_open_time = 0;
+	stepper.moveTo(0);
+	doorState = DOOR_CLOSING;
+
 	m_is_detected = false;
 	m_is_valid = false;
-	stepper.step(MOTOR_STEPS);
-	stepper.step(MOTOR_STEPS);
-
-	digitalWrite(STEP_INT4, LOW);
-	digitalWrite(STEP_INT2, LOW);
-	digitalWrite(STEP_INT3, LOW);
-	digitalWrite(STEP_INT1, LOW);
-
+	
+	Serial.println("[DEBUG] Door closing...");
 	createLog("SEN", "MOTOR", String(-1));
 }
 
